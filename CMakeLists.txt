@@ -64,6 +64,7 @@ if(S6I_TASK_BUILD_TESTS)
     # テスト実行ファイルを作成
     add_executable(${PROJECT_NAME}_tests
         tests/resources_test.cpp
+        tests/task_func_test.cpp
     )
     target_precompile_headers(${PROJECT_NAME}_tests PRIVATE tests/pch.h)
     target_link_libraries(${PROJECT_NAME}_tests PRIVATE
