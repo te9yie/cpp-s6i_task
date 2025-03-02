@@ -1,0 +1,7 @@
+BasedOnStyle: Chromium
+Language: Cpp
+
+# SingleLine
+AllowShortBlocksOnASingleLine: Empty
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortLambdasOnASingleLine: Empty

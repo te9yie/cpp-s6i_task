@@ -1,1 +1,1 @@
-# cpp-s6i_task
+# s6i_task
