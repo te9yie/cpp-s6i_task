@@ -1,6 +1,7 @@
 #pragma once
 
 #include <t9_mem/prelude.h>
+#include <cassert>
 #include <vector>
 
 namespace s6i_task {
@@ -17,14 +18,34 @@ class Resources {
     return ++index;
   }
 
+  class IResource {
+   public:
+    virtual ~IResource() = default;
+  };
+
+  template <typename T>
+  class Resource : public IResource {
+   public:
+    T m_value;
+
+    template <typename... Args>
+    Resource(Args&&... args) : m_value(std::forward<Args>(args)...) {}
+  };
+
  public:
-  using Vector = std::vector<void*, t9_mem::StlAllocator<void*>>;
+  template <typename T>
+  using Vector = std::vector<T, t9_mem::StlAllocator<T>>;
 
  private:
-  Vector m_pointers;
+  t9_mem::IAllocator* mp_allocator = nullptr;
+  Vector<void*> m_pointers;
+  Vector<t9_mem::UniquePtr<IResource>> m_resources;
 
  public:
-  Resources(t9_mem::IAllocator* allocator) : m_pointers(allocator) {}
+  Resources(t9_mem::IAllocator* allocator)
+      : mp_allocator(allocator),
+        m_pointers(allocator),
+        m_resources(allocator) {}
 
   template <typename T>
   T* get_ptr() {
@@ -33,6 +54,26 @@ class Resources {
       return nullptr;
     }
     return static_cast<T*>(m_pointers[index]);
+  }
+
+  template <typename T>
+  T* set(T&& value) {
+    auto resource =
+        t9_mem::make_unique<Resource<T>>(mp_allocator, std::forward<T>(value));
+    assert(resource);
+    auto ptr = &resource->m_value;
+    m_resources.emplace_back(std::move(resource));
+    return set_ptr(ptr);
+  }
+
+  template <typename T, typename... Args>
+  T* emplace(Args&&... args) {
+    auto resource = t9_mem::make_unique<Resource<T>>(
+        mp_allocator, std::forward<Args>(args)...);
+    assert(resource);
+    auto ptr = &resource->m_value;
+    m_resources.emplace_back(std::move(resource));
+    return set_ptr(ptr);
   }
 
   template <typename T>
