@@ -1,9 +1,9 @@
 #pragma once
 
 #include <t9/func_traits.h>
-#include <t9_mem/allocator.h>
-#include <t9_mem/unique_ptr.h>
+#include <t9_mem/prelude.h>
 #include <cassert>
+#include "permission.h"
 #include "resource_traits.h"
 #include "resources.h"
 
@@ -18,6 +18,7 @@ namespace s6i_task {
  */
 class ITaskFunc {
  private:
+  Permission m_permission;      ///< タスク関数のパーミッション
   Resources m_local_resources;  ///< タスク関数のローカルリソース
 
  public:
@@ -26,7 +27,8 @@ class ITaskFunc {
    *
    * @param allocator ローカルリソース用のアロケータ
    */
-  ITaskFunc(t9_mem::IAllocator* allocator) : m_local_resources(allocator) {}
+  ITaskFunc(t9_mem::IAllocator* allocator, const Permission& permission)
+      : m_permission(permission), m_local_resources(allocator) {}
 
   /**
    * @brief 仮想デストラクタ
@@ -34,6 +36,15 @@ class ITaskFunc {
    * 派生クラスのデストラクタが正しく呼ばれるようにします。
    */
   virtual ~ITaskFunc() = default;
+
+  /**
+   * @brief パーミッションを取得する
+   *
+   * @return const Permission& パーミッション
+   */
+  const Permission& permission() const {
+    return m_permission;
+  }
 
   /**
    * @brief タスク関数を実行する
@@ -81,7 +92,7 @@ class TaskFunc : public ITaskFunc {
    * @param func 呼び出す関数
    */
   TaskFunc(t9_mem::IAllocator* allocator, func_type func)
-      : ITaskFunc(allocator), mp_func(func) {}
+      : ITaskFunc(allocator, make_permission<Args...>()), mp_func(func) {}
 
  protected:
   /**

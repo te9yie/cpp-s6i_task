@@ -174,4 +174,96 @@ TEST_F(TaskFuncTest, MissingResource) {
   EXPECT_DEATH(task->exec(&resources), "");
 }
 
+// パーミッションのテスト
+TEST_F(TaskFuncTest, SingleArgumentPermission) {
+  // 書き込み可能な関数のパーミッション
+  {
+    auto task = s6i_task::make_task_func(&m_allocator, test_func1);
+    ASSERT_NE(task.get(), nullptr);
+
+    auto permission = task->permission();
+    EXPECT_TRUE(permission.test_read_permission<TestType1>());
+    EXPECT_TRUE(permission.test_write_permission<TestType1>());
+  }
+
+  // 読み取り専用の関数のパーミッション
+  {
+    auto task = s6i_task::make_task_func(&m_allocator, test_func2);
+    ASSERT_NE(task.get(), nullptr);
+
+    auto permission = task->permission();
+    EXPECT_TRUE(permission.test_read_permission<TestType1>());
+    EXPECT_FALSE(permission.test_write_permission<TestType1>());
+  }
+}
+
+TEST_F(TaskFuncTest, MultipleArgumentsPermission) {
+  // 書き込み可能な複数引数の関数のパーミッション
+  {
+    auto task = s6i_task::make_task_func(&m_allocator, test_func3);
+    ASSERT_NE(task.get(), nullptr);
+
+    auto permission = task->permission();
+    EXPECT_TRUE(permission.test_read_permission<TestType1>());
+    EXPECT_TRUE(permission.test_write_permission<TestType1>());
+    EXPECT_TRUE(permission.test_read_permission<TestType2>());
+    EXPECT_TRUE(permission.test_write_permission<TestType2>());
+  }
+
+  // 読み取り専用の複数引数の関数のパーミッション
+  {
+    auto task = s6i_task::make_task_func(&m_allocator, test_func4);
+    ASSERT_NE(task.get(), nullptr);
+
+    auto permission = task->permission();
+    EXPECT_TRUE(permission.test_read_permission<TestType1>());
+    EXPECT_FALSE(permission.test_write_permission<TestType1>());
+    EXPECT_TRUE(permission.test_read_permission<TestType2>());
+    EXPECT_FALSE(permission.test_write_permission<TestType2>());
+  }
+}
+
+TEST_F(TaskFuncTest, MixedPermissions) {
+  // 読み取り専用と書き込み可能な引数が混在する関数
+  auto task = s6i_task::make_task_func(
+      &m_allocator, [](const TestType1* data1, TestType2* data2) {
+        function_called = true;
+        last_value = data1->value;
+        data2->value = "modified";
+      });
+  ASSERT_NE(task.get(), nullptr);
+
+  auto permission = task->permission();
+  EXPECT_TRUE(permission.test_read_permission<TestType1>());
+  EXPECT_FALSE(permission.test_write_permission<TestType1>());
+  EXPECT_TRUE(permission.test_read_permission<TestType2>());
+  EXPECT_TRUE(permission.test_write_permission<TestType2>());
+}
+
+TEST_F(TaskFuncTest, PermissionConflict) {
+  // 2つのタスクのパーミッション競合をテスト
+  auto task1 = s6i_task::make_task_func(&m_allocator,
+                                        test_func1);  // TestType1の書き込み
+  auto task2 = s6i_task::make_task_func(&m_allocator,
+                                        test_func1);  // TestType1の書き込み
+  ASSERT_NE(task1.get(), nullptr);
+  ASSERT_NE(task2.get(), nullptr);
+
+  // 同じリソースへの書き込みアクセスは競合する
+  EXPECT_TRUE(s6i_task::is_conflict(task1->permission(), task2->permission()));
+
+  // 読み取り専用アクセスは競合しない
+  auto task3 = s6i_task::make_task_func(&m_allocator,
+                                        test_func2);  // TestType1の読み取り
+  auto task4 = s6i_task::make_task_func(&m_allocator,
+                                        test_func2);  // TestType1の読み取り
+  ASSERT_NE(task3.get(), nullptr);
+  ASSERT_NE(task4.get(), nullptr);
+
+  EXPECT_FALSE(s6i_task::is_conflict(task3->permission(), task4->permission()));
+
+  // 読み取りと書き込みは競合する
+  EXPECT_TRUE(s6i_task::is_conflict(task1->permission(), task3->permission()));
+}
+
 }  // namespace
