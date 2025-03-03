@@ -1,4 +1,3 @@
-#include <s6i_task/resources.h>
 #include <t9_mem/prelude.h>
 
 namespace {

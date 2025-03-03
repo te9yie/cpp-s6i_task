@@ -63,6 +63,7 @@ if(S6I_TASK_BUILD_TESTS)
 
     # テスト実行ファイルを作成
     add_executable(${PROJECT_NAME}_tests
+        tests/permission_test.cpp
         tests/resources_test.cpp
         tests/task_func_test.cpp
     )

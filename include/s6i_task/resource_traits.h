@@ -1,6 +1,7 @@
 #pragma once
 
 #include <t9/type_list.h>
+#include "resources.h"
 
 namespace s6i_task {
 
